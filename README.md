@@ -48,5 +48,7 @@ python3 live.py
 Explain how to use your Smart Pantry Management System. Include examples, screenshots, or code snippets if necessary.
 
 ## Resources
-- [Link to a demo video or presentation]
-- [Link to the project website, if available]
+- https://github.com/tutRPi/Raspberry-Pi-OCR-Live-Text-Detection/tree/main
+- https://tutorials-raspberrypi.com/raspberry-pi-text-recognition-ocr/
+- https://www.tensorflow.org/overview
+- https://www.youtube.com/watch?v=yI18t6suGVw
