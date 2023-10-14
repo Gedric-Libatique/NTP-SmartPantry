@@ -22,11 +22,33 @@ Provide a brief description of how to get started with your project. Include any
 List any prerequisites or system requirements needed to run your project.
 
 ## Installation
-A step-by-step guide on how to install and set up your project.
+Detect text in images or a camera live feed
+Tutorial: https://tutorials-raspberrypi.com/raspberry-pi-text-recognition-ocr/
+
+1. Install Tesseract
+
+```
+sudo apt install tesseract-ocr
+```
+
+2. Install dependencies
+
+```
+pip3 install -r requirements.txt
+```
+
+3. Run Examples
+
+```
+python3 example.py
+python3 live.py
+```
 
 ## Usage
 Explain how to use your Smart Pantry Management System. Include examples, screenshots, or code snippets if necessary.
 
 ## Resources
-- [Link to a demo video or presentation]
-- [Link to the project website, if available]
+- https://github.com/tutRPi/Raspberry-Pi-OCR-Live-Text-Detection/tree/main
+- https://tutorials-raspberrypi.com/raspberry-pi-text-recognition-ocr/
+- https://www.tensorflow.org/overview
+- https://www.youtube.com/watch?v=yI18t6suGVw
