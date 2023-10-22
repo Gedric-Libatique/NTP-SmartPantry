@@ -15,18 +15,20 @@ pipeline = Gst.parse_launch("v4l2src ! videoconvert ! video/x-raw,format=BGR ! a
 def on_new_sample(appsink):
     sample = appsink.emit("pull-sample")
     buffer = sample.get_buffer()
-    success, frame = buffer.extract_dup(0, buffer.get_size())
     
-    if success:
-        # Use Tesseract to perform OCR on the frame
-        frame = cv2.imdecode(np.frombuffer(frame, dtype=np.uint8), cv2.IMREAD_COLOR)
-        detected_text = pytesseract.image_to_string(frame)
+    if buffer:
+        success, frame = buffer.extract_dup(0, buffer.get_size())
+        
+        if success:
+            # Use Tesseract to perform OCR on the frame
+            frame = cv2.imdecode(np.frombuffer(frame, dtype=np.uint8), cv2.IMREAD_COLOR)
+            detected_text = pytesseract.image_to_string(frame)
 
-        # Display the detected text on the frame
-        cv2.putText(frame, detected_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # Display the detected text on the frame
+            cv2.putText(frame, detected_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-        # Display the frame with detected text
-        cv2.imshow("Text Detection", frame)
+            # Display the frame with detected text
+            cv2.imshow("Text Detection", frame)
     
     return Gst.FlowReturn.OK
 
