@@ -20,6 +20,7 @@ Provide a brief description of how to get started with your project. Include any
 
 ## Prerequisites
 List any prerequisites or system requirements needed to run your project.
+- https://qengineering.eu/install-opencv-on-raspberry-64-os.html
 
 ## Installation
 Detect text in images or a camera live feed
@@ -48,6 +49,13 @@ python3 live.py
 Explain how to use your Smart Pantry Management System. Include examples, screenshots, or code snippets if necessary.
 
 ## Resources
+- https://github.com/Qengineering
+- https://github.com/Qengineering/OpenCV_OCR_DNN
+- https://github.com/Qengineering/OpenCV_OCR_Detect_Text
+- https://github.com/Qengineering/PaddleOCR-Lite-Document
+- https://github.com/Qengineering/TensorFlow_Lite_Segmentation_RPi_32-bit
+- https://qengineering.eu/deep-learning-examples-on-raspberry-32-64-os.html
+  
 - https://github.com/tutRPi/Raspberry-Pi-OCR-Live-Text-Detection/tree/main
 - https://tutorials-raspberrypi.com/raspberry-pi-text-recognition-ocr/
 - https://www.tensorflow.org/overview
