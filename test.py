@@ -17,11 +17,13 @@ def on_new_sample(appsink):
     buffer = sample.get_buffer()
     
     if buffer:
-        frame = buffer.extract_dup(0, buffer.get_size())
+        success, mapinfo = buffer.map(Gst.MapFlags.READ)
         
-        if frame is not None:
+        if success:
+            # Convert the buffer data into a numpy array
+            frame = np.ndarray((480, 640, 3), buffer=np.frombuffer(mapinfo.data, dtype=np.uint8))
+
             # Use Tesseract to perform OCR on the frame
-            frame = cv2.imdecode(np.frombuffer(frame, dtype=np.uint8), cv2.IMREAD_COLOR)
             detected_text = pytesseract.image_to_string(frame)
 
             # Display the detected text on the frame
