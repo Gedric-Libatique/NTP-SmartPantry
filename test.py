@@ -17,22 +17,20 @@ def on_new_sample(appsink):
     buffer = sample.get_buffer()
     
     if buffer:
-        success, frame = buffer.extract_dup(0, buffer.get_size())
+        success, mapinfo = buffer.map(Gst.MapFlags.READ)
         
         if success:
-            frame = cv2.imdecode(np.frombuffer(frame, dtype=np.uint8), cv2.IMREAD_COLOR)
-            d = pytesseract.image_to_data(frame, output_type=pytesseract.Output.DICT)
-            n_boxes = len(d['text'])
-            for i in range(n_boxes):
-                if int(d['conf'][i]) > 60:
-                    (text, x, y, w, h) = (d['text'][i], d['left'][i], d['top'][i], d['width'][i], d['height'][i])
-                    # don't show empty text
-                    if text and text.strip() != "":
-                        frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                        frame = cv2.putText(frame, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+            # Convert the buffer data into a numpy array
+            frame = np.ndarray((480, 640, 3), buffer=np.frombuffer(mapinfo.data, dtype=np.uint8))
 
-            # Display the resulting frame
-            cv2.imshow('frame', frame)
+            # Use Tesseract to perform OCR on the frame
+            detected_text = pytesseract.image_to_string(frame)
+
+            # Display the detected text on the frame
+            cv2.putText(frame, detected_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+            # Display the frame with detected text
+            cv2.imshow("Text Detection", frame)
     
     return Gst.FlowReturn.OK
 
