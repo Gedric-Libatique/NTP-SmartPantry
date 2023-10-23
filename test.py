@@ -17,9 +17,9 @@ def on_new_sample(appsink):
     buffer = sample.get_buffer()
     
     if buffer:
-        success, frame = buffer.extract_dup(0, buffer.get_size())
+        frame = buffer.extract_dup(0, buffer.get_size())
         
-        if success:
+        if frame is not None:
             # Use Tesseract to perform OCR on the frame
             frame = cv2.imdecode(np.frombuffer(frame, dtype=np.uint8), cv2.IMREAD_COLOR)
             detected_text = pytesseract.image_to_string(frame)
