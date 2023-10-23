@@ -1,10 +1,12 @@
 import cv2
 import pytesseract
 from pytesseract import Output
- 
+
+# MAIN CAUSE OF ISSUE BELOW
+# How to run this program via terminal: python3 live.py
 cap = cv2.VideoCapture(0)
+
 # cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
- 
 while True:
     # Capture frame-by-frame
     ret, frame = cap.read()
