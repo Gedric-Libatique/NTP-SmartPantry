@@ -1,55 +1,37 @@
-import gi
-gi.require_version('Gst', '1.0')
-from gi.repository import Gst
 import cv2
-import pytesseract
-import numpy as np
 
-# Initialize GStreamer
-Gst.init(None)
+def gstreamer_pipeline(device, capture_width, capture_height, framerate, display_width, display_height):
+    return (
+        f'v4l2src device=/dev/video{device} ! '
+        f'video/x-raw, width={capture_width}, height={capture_height}, framerate={framerate}/1 ! '
+        'videoconvert ! videoscale ! '
+        f'video/x-raw, width={display_width}, height={display_height} ! appsink'
+    )
 
-# Create a GStreamer pipeline for video capture
-pipeline = Gst.parse_launch("v4l2src ! videoconvert ! video/x-raw,format=BGR ! appsink")
+# Pipeline parameters
+capture_width = 1280
+capture_height = 720
+display_width = 640
+display_height = 360
+framerate = 30
 
-# Set up a callback function to process each frame
-def on_new_sample(appsink):
-    sample = appsink.emit("pull-sample")
-    buffer = sample.get_buffer()
-    
-    if buffer:
-        success, mapinfo = buffer.map(Gst.MapFlags.READ)
-        
-        if success:
-            # Convert the buffer data into a numpy array
-            frame = np.ndarray((480, 640, 3), buffer=np.frombuffer(mapinfo.data, dtype=np.uint8))
+pipeline = gstreamer_pipeline(0, capture_width, capture_height, framerate, display_width, display_height)
+cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
 
-            # Use Tesseract to perform OCR on the frame
-            detected_text = pytesseract.image_to_string(frame)
-
-            # Display the detected text on the frame
-            cv2.putText(frame, detected_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
-            # Display the frame with detected text
-            cv2.imshow("Text Detection", frame)
-    
-    return Gst.FlowReturn.OK
-
-# Configure the appsink element to call the callback function
-appsink = pipeline.get_by_name("appsink0")
-appsink.set_property("emit-signals", True)
-appsink.connect("new-sample", on_new_sample)
-
-# Start the GStreamer pipeline
-pipeline.set_state(Gst.State.PLAYING)
-
-# Main loop
-try:
+if not cap.isOpened():
+    print("Failed to open camera.")
+else:
     while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        # Process the frame here if needed
+        
+        cv2.imshow('Camera Feed', frame)
+        
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
-except KeyboardInterrupt:
-    pass
-finally:
-    # Stop the GStreamer pipeline
-    pipeline.set_state(Gst.State.NULL)
+
+    cap.release()
     cv2.destroyAllWindows()
