@@ -1,10 +1,8 @@
 import pytesseract
 from pytesseract import Output
 from picamera2 import Picamera2
-import io
 import cv2
 import numpy as np
-import time
 
 # Initialize PiCamera
 camera = Picamera2()
@@ -12,18 +10,10 @@ camera = Picamera2()
 # Set camera resolution (adjust these values as needed)
 camera.resolution = (1280, 720)
 
-# Create an in-memory stream for capturing the image
-stream = io.BytesIO()
-
 while True:
-    # Capture an image and save it to the stream
-    camera.capture(stream, format='jpeg')
-    data = np.fromstring(stream.getvalue(), dtype=np.uint8)
-    frame = cv2.imdecode(data, 1)
-
-    # Reset the stream for the next capture
-    stream.seek(0)
-    stream.truncate()
+    # Capture an image and save it to a file
+    camera.capture_file('image.jpg')
+    frame = cv2.imread('image.jpg')
 
     d = pytesseract.image_to_data(frame, output_type=Output.DICT)
     n_boxes = len(d['text'])
