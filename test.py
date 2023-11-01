@@ -1,3 +1,4 @@
+# sudo modprobe bcm2835-v4l2
 import cv2
 
 # Open the camera
