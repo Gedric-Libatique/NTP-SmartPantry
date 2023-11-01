@@ -1,12 +1,12 @@
 import pytesseract
 from pytesseract import Output
-from picamera import PiCamera
+from picamera2 import Picamera2
 import cv2
 import numpy as np
 import time
 
-# Initialize PiCamera
-camera = PiCamera()
+# Initialize Picamera2
+camera = Picamera2()
 
 # Set camera resolution (adjust these values as needed)
 camera.resolution = (640, 480)
@@ -23,10 +23,8 @@ skip_frames = 5  # Process every 5th frame (adjust as needed)
 
 try:
     while True:
-        # Capture an image as a NumPy array
-        frame = np.empty((camera.resolution[1] * camera.resolution[0] * 3,), dtype=np.uint8)
-        camera.capture(frame, 'bgr')
-        frame = frame.reshape((camera.resolution[1], camera.resolution[0], 3))
+        # Capture an image directly into a numpy array
+        frame = camera.capture_array()
 
         if frame_counter % skip_frames == 0:
             d = pytesseract.image_to_data(frame, output_type=Output.DICT)
@@ -38,10 +36,10 @@ try:
                         frame = cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
                         frame = cv2.putText(frame, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
 
-            # Display the resulting frame
-            cv2.imshow('Text Detection', frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+        # Display the resulting frame
+        cv2.imshow('Text Detection', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
         frame_counter += 1
 
