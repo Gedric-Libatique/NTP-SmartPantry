@@ -1,3 +1,7 @@
+File "/home/team4pi/Documents/pantry/test3.py", line 11, in <module>
+    cv2.imshow('Live Video', frame)
+cv2.error: OpenCV(4.8.1) /io/opencv/modules/highgui/src/window.cpp:971: error: (-215:Assertion failed) size.width>0 && size.height>0 in function 'imshow'
+
 # sudo modprobe bcm2835-v4l2
 import cv2
 
