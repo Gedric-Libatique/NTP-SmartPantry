@@ -1,3 +1,5 @@
+How can I increase the fps of the camera below for live text detection?
+
 import pytesseract
 from pytesseract import Output
 from picamera2 import Picamera2
