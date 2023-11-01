@@ -1,3 +1,4 @@
+# global cap_v4l.cpp:1119 tryIoctl VIDEOIO(V4L2:/dev/video0): select() timeout.
 # sudo modprobe bcm2835-v4l2
 import cv2
 
