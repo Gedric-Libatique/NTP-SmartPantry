@@ -1,37 +1,27 @@
 import pytesseract
 from pytesseract import Output
-from picamera2 import Picamera2
-import cv2
+from picamera2 import Picamera2, Preview
 import numpy as np
+import cv2
 import time
+import keyboard
 
-# Initialize PiCamera
 camera = Picamera2()
-
-# Set camera resolution (adjust these values as needed)
-camera.resolution = (1280, 720)
-capture_config = camera.create_still_configuration()
+camera_config = camera.create_preview_configuration()
+camera.configure(camera_config)
+camera.start_preview(Preview.QTGL)
 camera.start()
 
 while True:
-    # Capture a frame from the camera feed
-    frame = camera.capture_frame()
-
-    # Display the live feed in a window
-    cv2.imshow('Camera Feed', frame)
-
     # Wait for user input and capture an image if 'p' is pressed
-    key = cv2.waitKey(1) & 0xFF
-    if key == ord('p'):
+    if keyboard.is_pressed('p'):
         # Capture an image and save it to a file
         camera.capture_file("image.jpg")
         break
 
 # When everything is done, release the camera and close the windows
 camera.close()
-cv2.destroyAllWindows()
-
-# Read the captured image from file
+time.sleep(2)
 frame = cv2.imread('image.jpg')
 
 d = pytesseract.image_to_data(frame, output_type=Output.DICT)
