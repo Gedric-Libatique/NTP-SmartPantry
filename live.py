@@ -1,3 +1,9 @@
+# [0:31:27.686657589] [6629]  INFO Camera camera_manager.cpp:284 libcamera v0.1.0+52-a858d20b
+# [0:31:27.729837549] [6638]  WARN RPiSdn sdn.cpp:39 Using legacy SDN tuning - please consider moving SDN inside rpi.denoise
+# [0:31:27.732158493] [6638]  INFO RPI vc4.cpp:387 Registered camera /base/soc/i2c0mux/i2c@1/imx477@1a to Unicam device /dev/media1 and ISP device /dev/media2
+# [0:31:27.738665721] [6629]  INFO Camera camera.cpp:1213 configuring streams: (0) 640x480-XBGR8888 (1) 2028x1520-SBGGR12_CSI2P
+# [0:31:27.739129439] [6638]  INFO RPI vc4.cpp:549 Sensor: /base/soc/i2c0mux/i2c@1/imx477@1a - Selected sensor format: 2028x1520-SBGGR12_1X12 - Selected unicam format: 2028x1520-pBCC
+
 import pytesseract
 from pytesseract import Output
 from picamera2 import Picamera2
