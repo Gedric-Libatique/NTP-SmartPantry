@@ -29,24 +29,24 @@ class Application(tk.Frame):
         img_counter = 0  # counter for image name
         
         while True:
-        ret, frame = cap.read()
-        cv2.imshow('Camera Feed', frame)
-        
-        k = cv2.waitKey(1)
-        if k & 0xFF == ord('q'):  # quit camera feed if 'q' is pressed
-            break
-        elif k & 0xFF == ord('p'):  # capture frame if 'p' is pressed
-            img_name = "/home/team4pi/Documents/pantry/Dates/frame_{}.jpg".format(img_counter)
-            cv2.imwrite(img_name, frame)
-            print("{} written!".format(img_name))
-            img_counter += 1
+            ret, frame = cap.read()
+            cv2.imshow('Camera Feed', frame)
+            
+            k = cv2.waitKey(1)
+            if k & 0xFF == ord('q'):  # quit camera feed if 'q' is pressed
+                break
+            elif k & 0xFF == ord('p'):  # capture frame if 'p' is pressed
+                img_name = "/home/team4pi/Documents/pantry/Dates/frame_{}.jpg".format(img_counter)
+                cv2.imwrite(img_name, frame)
+                print("{} written!".format(img_name))
+                img_counter += 1
             
         cap.release()
         cv2.destroyAllWindows()
 
     def display_images(self):
         script_path = os.path.join(os.path.dirname(__file__), 'example.py')
-        if os.path.exists(script_path):
+        if os.path exists(script_path):
             subprocess.Popen(['python', script_path])
         else:
             print("The script 'example.py' was not found in the same folder.")
