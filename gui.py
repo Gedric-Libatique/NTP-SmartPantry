@@ -4,6 +4,7 @@ import cv2
 import os
 import threading
 from pytesseract import pytesseract, Output  # Import pytesseract and Output
+import subprocess
 
 class Application(tk.Frame):
     def __init__(self, master=None):
@@ -49,11 +50,11 @@ class Application(tk.Frame):
         cv2.destroyAllWindows()
 
     def display_images(self):
-        image_dir = filedialog.askdirectory()
-        image_files = [f for f in os.listdir(image_dir) if f.endswith('.jpg')]
-
-        for image in image_files:
-            print(image)
+        script_path = os.path.join(os.path.dirname(__file__), 'example.py')
+        if os.path.exists(script_path):
+            subprocess.Popen(['python', script_path])
+        else:
+            print("The script 'example.py' was not found in the same folder.")
 
 root = tk.Tk()
 app = Application(master=root)
