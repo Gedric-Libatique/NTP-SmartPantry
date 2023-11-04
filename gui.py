@@ -1,3 +1,5 @@
+# Could not find the Qt platform plugin "wayland" in "/home/team4pi/.local/lib/python3.11/site-packages/cv2/qt/plugins"
+
 import tkinter as tk
 from tkinter import filedialog
 import cv2
