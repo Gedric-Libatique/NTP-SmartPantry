@@ -2,51 +2,46 @@ import tkinter as tk
 from tkinter import filedialog
 import cv2
 import os
+import threading
 
-# Function to show the live camera feed
-def show_camera():
-    camera = cv2.VideoCapture(0)
-    
-    def update_frame():
-        ret, frame = camera.read()
-        if ret:
-            cv2image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = tk.PhotoImage(data=cv2image.tobytes())
-            panel.img = img
-            panel.config(image=img)
-            panel.after(10, update_frame)
-    
-    camera_window = tk.Toplevel(root)
-    camera_window.title("Camera Feed")
-    panel = tk.Label(camera_window)
-    panel.pack()
-    update_frame()
+class Application(tk.Frame):
+    def __init__(self, master=None):
+        super().__init__(master)
+        self.master = master
+        self.pack()
+        self.create_widgets()
 
-# Function to list .jpg images in the current folder
-def list_images():
-    folder = os.getcwd()
-    images = [file for file in os.listdir(folder) if file.endswith('.jpg')]
-    
-    image_list_window = tk.Toplevel(root)
-    image_list_window.title("Image List")
-    image_list = tk.Listbox(image_list_window)
-    for image in images:
-        image_list.insert(tk.END, image)
-    image_list.pack()
+    def create_widgets(self):
+        self.quit = tk.Button(self, text="Exit", fg="red",
+                              command=self.master.destroy)
+        self.quit.pack(side="top", anchor="ne")
 
-# Create the main window
+        self.cam_button = tk.Button(self, text="Enable Camera", command=self.enable_camera)
+        self.cam_button.pack(side="top")
+
+        self.img_button = tk.Button(self, text="Display Images", command=self.display_images)
+        self.img_button.pack(side="top")
+
+    def enable_camera(self):
+        cap = cv2.VideoCapture(0)
+
+        while True:
+            ret, frame = cap.read()
+            cv2.imshow('Camera Feed', frame)
+
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+    def display_images(self):
+        image_dir = filedialog.askdirectory()
+        image_files = [f for f in os.listdir(image_dir) if f.endswith('.jpg')]
+
+        for image in image_files:
+            print(image)
+
 root = tk.Tk()
-root.title("Simple UI")
-
-# Create buttons
-camera_button = tk.Button(root, text="Live Camera Feed", command=show_camera)
-image_list_button = tk.Button(root, text="List .jpg Images", command=list_images)
-exit_button = tk.Button(root, text="Exit", command=root.destroy)
-
-# Pack the buttons
-camera_button.pack()
-image_list_button.pack()
-exit_button.pack()
-
-# Start the GUI main loop
-root.mainloop()
+app = Application(master=root)
+app.mainloop()
