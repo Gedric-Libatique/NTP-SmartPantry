@@ -3,9 +3,12 @@ import pytesseract
 from roboflow import Roboflow
 
 # Initialize the Roboflow model
+# rf = Roboflow(api_key="xkbIrK2MkTDbwkuRw4wW")
+# project = rf.workspace().project("expiration-date-a4klq")
+# model = project.version(3).model
 rf = Roboflow(api_key="xkbIrK2MkTDbwkuRw4wW")
-project = rf.workspace().project("expiration-date-a4klq")
-model = project.version(3).model
+project = rf.workspace().project("expiration-date-mexx5")
+model = project.version(4).model
 
 # Start video capture
 cap = cv2.VideoCapture(0)
@@ -23,9 +26,9 @@ while True:
     frame_resized_for_prediction = cv2.resize(frame, (prediction_image_width, prediction_image_height))
 
     # Predict using Roboflow model 
-    prediction = model.predict(frame_resized_for_prediction, confidence=30, overlap=30).json()
+    prediction = model.predict(frame_resized_for_prediction, confidence=50, overlap=30).json()
 
-    # Scale factors 
+    # Scale factors
     scale_x = frame.shape[1] / prediction_image_width
     scale_y = frame.shape[0] / prediction_image_height
 
