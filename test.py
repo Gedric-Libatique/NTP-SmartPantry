@@ -1,57 +1,68 @@
 import cv2
 import pytesseract
-from pytesseract import Output
-import threading
+from roboflow import Roboflow
 
-# Create a lock to prevent simultaneous thread access to the frame
-frame_lock = threading.Lock()
+# Initialize the Roboflow model
+rf = Roboflow(api_key="xkbIrK2MkTDbwkuRw4wW")
+project = rf.workspace().project("expiration-date-a4klq")
+model = project.version(3).model
 
-# Start video capture on a separate thread
-def capture():
-    global cap, frame
-    while True:
-        ret, f = cap.read()
-        with frame_lock:
-            frame = f
-
+# Start video capture
 cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
-# Start the capture thread
-cap_thread = threading.Thread(target=capture)
-cap_thread.start()
-
-frame_count = 0
 while True:
-    # Capture frame-by-frame
-    with frame_lock:
-        f = frame.copy()
+    ret, frame = cap.read()  # Capture a frame
+    if not ret:
+        print("Failed to grab frame")
+        break
 
-    # Skip frames to improve FPS
-    frame_count += 1
-    if frame_count % 5 == 0:
-        # Resize the frame
-        f = cv2.resize(f, None, fx=0.5, fy=0.5)
+    # Assume the image is resized for prediction
+    prediction_image_width = 640  # Example prediction dimensions
+    prediction_image_height = 640
+    frame_resized_for_prediction = cv2.resize(frame, (prediction_image_width, prediction_image_height))
 
-        # Convert to grayscale
-        gray = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
+    # Save the frame temporarily
+    temp_img_path = "temp_frame.jpg"
+    cv2.imwrite(temp_img_path, frame_resized_for_prediction)
 
-        # Use Tesseract to find text in the image
-        d = pytesseract.image_to_data(gray, output_type=Output.DICT)
-        n_boxes = len(d['text'])
-        for i in range(n_boxes):
-            if int(d['conf'][i]) > 60:
-                (text, x, y, w, h) = (d['text'][i], d['left'][i], d['top'][i], d['width'][i], d['height'][i])
-                # don't show empty text
-                if text and text.strip() != "":
-                    f = cv2.rectangle(f, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                    f = cv2.putText(f, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+    # Predict using Roboflow model
+    prediction = model.predict(temp_img_path, confidence=50, overlap=30).json()
 
-        # Display the resulting frame
-        cv2.imshow('frame', f)
+    # Scale factor for bounding box coordinates
+    scale_x = frame.shape[1] / prediction_image_width
+    scale_y = frame.shape[0] / prediction_image_height
+
+    for obj in prediction['predictions']:
+        x1 = int((obj['x'] - obj['width'] / 2) * scale_x)
+        x2 = int((obj['x'] + obj['width'] / 2) * scale_x)
+        y1 = int((obj['y'] - obj['height'] / 2) * scale_y)
+        y2 = int((obj['y'] + obj['height'] / 2) * scale_y)
+        # cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        # class_name = obj['class']
+        # confidence = obj['confidence']
+        # label = f"{class_name}: {confidence:.2f}"
+
+        # # Calculate the position for the text (above the bounding box)
+        # label_size, base_line = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
+        # top = max(y1, label_size[1])
+        # cv2.putText(frame, label, (x1, top - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+
+        # Extract the region of interest (ROI) and use Tesseract to read the text
+        roi = frame[y1:y2, x1:x2]
+        # Use Tesseract to do OCR on the ROI
+        text = pytesseract.image_to_string(roi, config='--psm 6')
+
+        # Draw the bounding box and the OCR'd text above it
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.putText(frame, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+    # Display the frame
+    cv2.imshow("Expiration Date Detection", frame)
+
+    # Exit the loop when the 'q' key is pressed
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# When everything done, release the capture
 cap.release()
 cv2.destroyAllWindows()
