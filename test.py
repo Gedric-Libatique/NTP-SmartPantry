@@ -10,47 +10,37 @@ model = project.version(3).model
 # Start video capture
 cap = cv2.VideoCapture(0)
 
+# Set the desired prediction image dimensions 
+prediction_image_width = 640
+prediction_image_height = 640
+
 while True:
     ret, frame = cap.read()  # Capture a frame
     if not ret:
         print("Failed to grab frame")
         break
 
-    # Assume the image is resized for prediction
-    prediction_image_width = 640  # Example prediction dimensions
-    prediction_image_height = 640
     frame_resized_for_prediction = cv2.resize(frame, (prediction_image_width, prediction_image_height))
 
-    # Save the frame temporarily
-    temp_img_path = "temp_frame.jpg"
-    cv2.imwrite(temp_img_path, frame_resized_for_prediction)
+    # Predict using Roboflow model 
+    prediction = model.predict(frame_resized_for_prediction, confidence=30, overlap=30).json()
 
-    # Predict using Roboflow model
-    prediction = model.predict(temp_img_path, confidence=50, overlap=30).json()
-
-    # Scale factor for bounding box coordinates
+    # Scale factors 
     scale_x = frame.shape[1] / prediction_image_width
     scale_y = frame.shape[0] / prediction_image_height
 
+    # Process predictions and draw bounding boxes and text
     for obj in prediction['predictions']:
+        
         x1 = int((obj['x'] - obj['width'] / 2) * scale_x)
         x2 = int((obj['x'] + obj['width'] / 2) * scale_x)
         y1 = int((obj['y'] - obj['height'] / 2) * scale_y)
         y2 = int((obj['y'] + obj['height'] / 2) * scale_y)
-        # cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-        # class_name = obj['class']
-        # confidence = obj['confidence']
-        # label = f"{class_name}: {confidence:.2f}"
-
-        # # Calculate the position for the text (above the bounding box)
-        # label_size, base_line = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
-        # top = max(y1, label_size[1])
-        # cv2.putText(frame, label, (x1, top - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
-        # Extract the region of interest (ROI) and use Tesseract to read the text
+        
+        # Define the region of interest (ROI) based on the bounding box
         roi = frame[y1:y2, x1:x2]
-        # Use Tesseract to do OCR on the ROI
+
+        # Use Tesseract to do OCR on the binary ROI
         text = pytesseract.image_to_string(roi, config='--psm 6')
 
         # Draw the bounding box and the OCR'd text above it
@@ -64,5 +54,6 @@ while True:
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
+# Release the capture when everything is done
 cap.release()
 cv2.destroyAllWindows()
