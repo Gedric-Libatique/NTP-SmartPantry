@@ -8,6 +8,7 @@ dark = False
 sortValue = -1
 list = []
 expireRange = 2
+alertActive = False;
 
 # Functions
 class Item:
@@ -18,6 +19,7 @@ class Item:
         return f'{self.name}'
     def __eq__(self, other):
         return self.name == other.name
+# Check Dates
 def dateCheck(date):
     today = datetime.date.today()
     if date.year > today.year:
@@ -31,11 +33,60 @@ def dateCheck(date):
             elif date.day > today.day:
                 return '✅'
     return '⛔'
+# Add to List
 def addToList(tree, item):
-    list.append(item)
-    addEntry(tree, item)
+    if alertActive == False:
+        list.append(item)
+        addEntry(tree, item)
+# Add to Tree
 def addEntry(tree, item):
+    global alertActive
     tree.insert('', 'end', text="1", values=(str(item), dateCheck(item.date), str(item.date)))
+    if dateCheck(item.date) == '⚠' or dateCheck(item.date) == '⛔':
+        newAlert()
+        alertActive = True
+# Alert Window
+def newAlert():
+    global alertActive
+    if alertActive == False:
+        
+        alertWindow = Toplevel(window)
+        alertWindow.attributes('-topmost', True)
+        alertWindow.overrideredirect(True)
+        alertWindow.geometry('+%d+%d'%(window.winfo_screenmmwidth() / 2, window.winfo_screenmmheight() / 2))
+        
+        Label(alertWindow, text=('Warning!\nThe following items are close to or are expired!'), font=('Arial', 12), anchor=N, fg='black', bg='white', borderwidth=2).pack() 
+        # Table Setup
+        alertTreeFrame = Frame(alertWindow)
+        alertTreeFrame.pack()
+        style = ttk.Style()
+        style.theme_use('clam')
+        alertTree = ttk.Treeview(alertTreeFrame, column=('Item', 'Expiration Date'), show='headings', height=5)
+
+        # Table Scrollbar
+        alertTreeScroll = ttk.Scrollbar(alertTreeFrame, orient='vertical', command=alertTree.yview)
+        alertTreeScroll.pack(side='right', fill=Y)
+        alertTree.configure(yscrollcommand = alertTreeScroll.set)
+
+        # Table Entries
+        alertTree.column('# 1', anchor=CENTER)
+        alertTree.heading('# 1', text='Item', command=lambda:sortA(alertTree))
+        alertTree.column('# 2', anchor=CENTER)
+        alertTree.heading('# 2', text='Date', command=lambda:sortE(alertTree))
+        for i in list:
+            if dateCheck(i.date) == '⚠' or dateCheck(i.date) == '⛔':
+                alertTree.insert('', 'end', text="1", values=(str(i), str(i.date)))
+        alertTree.pack()
+        
+        alertButton = Button(alertWindow, text='Close', width=50, command=lambda:die(alertWindow))
+        alertButton.pack()
+        alertActive = True
+# Close
+def die(b):
+    b.destroy()
+    global alertActive
+    alertActive = False
+# Toggle Modes
 def toggle():
     global dark
     if dark:
@@ -50,6 +101,7 @@ def toggle():
         tableLegend.configure(fg='white', bg='black')
         colorButton.configure(text='Set to Light Theme')
         dark = True
+# Sort Alphabetically
 def sortA(tree):
     global sortValue
     if sortValue == 1:
@@ -70,6 +122,7 @@ def sortA(tree):
         for index, (values, item) in enumerate(rows):
             tree.move(item, '', index)
         sortValue = 1
+# Sort by Date
 def sortE(tree):
     global sortValue
     if sortValue == 3:
@@ -90,24 +143,20 @@ def sortE(tree):
         for index, (values, item) in enumerate(rows):
             tree.move(item, '', index)
         sortValue = 3
-# Test cases
-list.append(Item('Soup'))
-list.append(Item('Clam Chowder'))
-list.append(Item('Tuna Snack'))
-list.append(Item('Oatmeal', datetime.date(2023, 11, 8)))
-list.append(Item('Oatmeal', datetime.date(2023, 11, 9)))
-list.append(Item('Oatmeal', datetime.date(2020, 9, 10)))
-list.append(Item('Oatmeal', datetime.date(2020, 12, 20)))
-list.append(Item('Tuna Snack', datetime.date(2023, 10, 10)))
-list.append(Item('Corned Beef', datetime.date(2023, 11, 6)))
-list.append(Item('Crisp Rice Cereal', datetime.date(2023, 11, 12)))
-list.append(Item('Crackers', datetime.date(2023, 12, 20)))
-list.append(Item('Tomato Paste', datetime.date(2024, 10, 10)))
-list.append(Item('Tomato Paste', datetime.date(2024, 6, 2)))
+# Find in Tree
+def find(t, searchItem):
+    for i in t.get_children():
+        if t.item(i)['values'][0].lower().__contains__(str(searchItem).lower()):
+            tid = i
+            t.focus(tid)
+            t.selection_set(tid)
+            t.see(i)
+            break
 
 # Window
 window = Tk()
-# window.attributes('-fullscreen',True)
+window.attributes('-fullscreen',True)
+window.attributes('-topmost', False)
 window.title('Smart Pantry')
 icon = PhotoImage(file='./icon.ppm')
 window.iconphoto(False, icon)
@@ -148,12 +197,18 @@ tree.pack()
 
 # Table Legend
 tableLegend = Label(window, text=('✅ = Safe to Distribute   ⚠ = Within ' + str(expireRange) + ' Days until Expiring   ⛔ = Past Expiration Date'), font=('Arial', 12), anchor=W, fg='black', bg='white', borderwidth=2)
-tableLegend.pack()
+tableLegend.pack(pady=15)
+
+# Search
+entry = Entry(window, bd=2)
+entry.pack()
+search = Button(window, text=('Search for Item'), command=lambda:find(tree, entry.get()))
+search.pack()
 
 # Scan Button
 testCereal = Item('Test Cereal')
 button = Button(window, text='Add Test Item (Replace with Scan Function)', width=50, command=lambda:addToList(tree, testCereal))
-button.pack()
+button.pack(pady=15)
 
 # Theme Button
 colorButton = Button(window, text='Set to Dark Theme', width=16, fg='white', bg='gray30', highlightcolor='gray35',command=toggle)
