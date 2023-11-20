@@ -143,6 +143,7 @@ def sortE(tree):
         for index, (values, item) in enumerate(rows):
             tree.move(item, '', index)
         sortValue = 3
+"""
 # Find in Tree
 def find(t, searchItem):
     for i in t.get_children():
@@ -152,7 +153,7 @@ def find(t, searchItem):
             t.selection_set(tid)
             t.see(i)
             break
-
+"""
 # Window
 window = Tk()
 window.attributes('-fullscreen',True)
@@ -199,11 +200,13 @@ tree.pack()
 tableLegend = Label(window, text=('✅ = Safe to Distribute   ⚠ = Within ' + str(expireRange) + ' Days until Expiring   ⛔ = Past Expiration Date'), font=('Arial', 12), anchor=W, fg='black', bg='white', borderwidth=2)
 tableLegend.pack(pady=15)
 
+"""
 # Search
 entry = Entry(window, bd=2)
 entry.pack()
 search = Button(window, text=('Search for Item'), command=lambda:find(tree, entry.get()))
 search.pack()
+"""
 
 # Scan Button
 testCereal = Item('Test Cereal')
