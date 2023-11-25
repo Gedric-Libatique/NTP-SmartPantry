@@ -90,23 +90,46 @@ def startScanning():
         if is_active == 1:
             cv2.destroyWindow('Camera Feed')
             print("Proceeding to capture....")
+            
+            # Set preview properties to full screen
+            cv2.namedWindow('Saved Image', cv2.WINDOW_NORMAL)
+            cv2.setWindowProperty('Saved Image', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            cv2.setMouseCallback('Saved Image', mouse_click2)
+            
             # Save captured frame to database
             img_name = "/home/team4pi/Documents/smartpantry/database/item{}.jpg".format(img_counter)
             cv2.imwrite(img_name, frame)
             img = cv2.imread(img_name)
-			# Set preview properties to full screen
-            cv2.namedWindow('Saved Image', cv2.WINDOW_NORMAL)
-            cv2.setWindowProperty('Saved Image', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-            cv2.setMouseCallback('Saved Image', mouse_click2)
+            
             # Convert frame to grayscale
-            frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             frame_resized_for_prediction = cv2.resize(frame_gray, (prediction_image_width, prediction_image_height))
+            
             # Predict using Roboflow model 
             prediction = model.predict(frame_resized_for_prediction, confidence=35, overlap=30).json()
+            
             # Scale factors 
-            scale_x = frame.shape[1] / prediction_image_width
-            scale_y = frame.shape[0] / prediction_image_height
-    
+            scale_x = img.shape[1] / prediction_image_width
+            scale_y = img.shape[0] / prediction_image_height
+			
+			# Process predictions and draw bounding boxes and text
+            for obj in prediction['predictions']:
+                x1 = int((obj['x'] - obj['width'] / 2) * scale_x)
+                x2 = int((obj['x'] + obj['width'] / 2) * scale_x)
+                y1 = int((obj['y'] - obj['height'] / 2) * scale_y)
+                y2 = int((obj['y'] + obj['height'] / 2) * scale_y)
+				
+				# Define the region of interest (ROI) based on the bounding box
+                roi = img[y1:y2, x1:x2]
+
+				# Use Tesseract to do OCR on the binary ROI
+                text = pytesseract.image_to_string(roi, config='--psm 6')
+
+				# Draw the bounding box and the OCR'd text above it
+                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(img, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+			# Display the frame
             cv2.imshow('Saved Image', img)
               
             while True:
