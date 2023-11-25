@@ -2,6 +2,7 @@ import datetime
 import tkinter as tk
 from tkinter import *
 from tkinter import ttk
+from tkinter import Tk, Button, font
 import cv2
 import pytesseract
 from roboflow import Roboflow
@@ -49,11 +50,6 @@ def dateCheck(date):
             elif date.day > today.day:
                 return '✅'
     return '⛔'
-# Add to List
-def addToList(tree, item):
-    if alertActive == False:
-        list.append(item)
-        addEntry(tree, item)
         
 def mouse_click(event, x, y, flags, param):
 	global is_active
@@ -65,7 +61,23 @@ def mouse_click2(event, x, y, flags, param):
 	global clicked
 	if event == cv2.EVENT_LBUTTONDOWN:
 		clicked = 1
-		
+
+# Add to Tree
+def addEntry(tree, item, text):
+    global alertActive
+    tree.insert('', 'end', text="1", values=(str(item), dateCheck(item.date), str(text)))
+    '''
+    if dateCheck(item.date) == '⚠' or dateCheck(item.date) == '⛔':
+        newAlert()
+        alertActive = True
+    '''
+
+# Add to List
+def addToList(tree, item, text):
+    if alertActive == False:
+        list.append(item)
+        addEntry(tree, item, text)
+
 # Begin scanning items
 def startScanning():	
     global is_active, clicked, img_counter
@@ -124,6 +136,11 @@ def startScanning():
 
 				# Use Tesseract to do OCR on the binary ROI
                 text = pytesseract.image_to_string(roi, config='--psm 6')
+                
+                # Extract date and store in list
+                print(text)
+                scannedItem = Item("Pantry Item {}".format(img_counter))
+                addToList(tree, scannedItem, text)
 
 				# Draw the bounding box and the OCR'd text above it
                 cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -146,13 +163,65 @@ def startScanning():
     cap.release()
     cv2.destroyAllWindows()
 
-# Add to Tree
-def addEntry(tree, item):
-    global alertActive
-    tree.insert('', 'end', text="1", values=(str(item), dateCheck(item.date), str(item.date)))
-    if dateCheck(item.date) == '⚠' or dateCheck(item.date) == '⛔':
-        newAlert()
-        alertActive = True
+# Begin using live feed
+def startLiveFeed():
+	global is_active	
+	cap = cv2.VideoCapture(0)
+	prediction_image_width = 640
+	prediction_image_height = 640
+	
+	while True:
+		ret, frame = cap.read()
+		if not ret:
+			print("Failed to grab frame")
+			break
+			
+		# Convert frame to grayscale
+		frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+		frame_resized_for_prediction = cv2.resize(frame_gray, (prediction_image_width, prediction_image_height))
+
+		# Predict using Roboflow model 
+		prediction = model.predict(frame_resized_for_prediction, confidence=35, overlap=30).json()
+
+		# Scale factors 
+		scale_x = frame.shape[1] / prediction_image_width
+		scale_y = frame.shape[0] / prediction_image_height
+
+		# Process predictions and draw bounding boxes and text
+		for obj in prediction['predictions']:
+			x1 = int((obj['x'] - obj['width'] / 2) * scale_x)
+			x2 = int((obj['x'] + obj['width'] / 2) * scale_x)
+			y1 = int((obj['y'] - obj['height'] / 2) * scale_y)
+			y2 = int((obj['y'] + obj['height'] / 2) * scale_y)
+			
+			# Define the region of interest (ROI) based on the bounding box
+			roi = frame[y1:y2, x1:x2]
+
+			# Use Tesseract to do OCR on the binary ROI
+			text = pytesseract.image_to_string(roi, config='--psm 6')
+
+			# Draw the bounding box and the OCR'd text above it
+			cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+			cv2.putText(frame, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+		# Display the frame
+		cv2.namedWindow('Live Feed Detection', cv2.WINDOW_NORMAL)
+		cv2.setWindowProperty('Live Feed Detection', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+		cv2.setMouseCallback('Live Feed Detection', mouse_click)
+		cv2.imshow("Live Feed Detection", frame)
+
+		# Exit the loop when the 'q' key is pressed
+		k = cv2.waitKey(1)
+		if k & 0xFF == ord('q'):
+			break
+		if is_active == 1:
+			is_active = 0
+			break
+
+	# Release the capture when everything is done
+	cap.release()
+	cv2.destroyAllWindows()
+
 # Alert Window
 def newAlert():
     global alertActive
@@ -317,8 +386,14 @@ search.pack()
 """
 
 # Scan Button
-testCereal = Item('Test Cereal')
-button = Button(window, text='Add Test Item (Replace with Scan Function)', width=50, command=lambda:startScanning())
+#testCereal = Item('Test Cereal')
+custom_font = font.Font(family="Helvetica", size=25)
+button = Button(window, text='Add Pantry Item', font=custom_font, width=50, height=2, bg="#00ff00", command=lambda:startScanning())
+button.pack(pady=15)
+
+# Live Scan Button
+custom_font = font.Font(family="Helvetica", size=25)
+button = Button(window, text='Live Feed', font=custom_font, width=50, height=2, bg="#ffff00", command=lambda:startLiveFeed())
 button.pack(pady=15)
 
 # Theme Button
