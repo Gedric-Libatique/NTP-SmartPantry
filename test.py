@@ -1,63 +1,269 @@
+import datetime
+import tkinter as tk
+from tkinter import *
+from tkinter import ttk
 import cv2
 import pytesseract
 from roboflow import Roboflow
 
 # Initialize the Roboflow model
-rf = Roboflow(api_key="xkbIrK2MkTDbwkuRw4wW")
+#rf = Roboflow(api_key="xkbIrK2MkTDbwkuRw4wW")
 # project = rf.workspace().project("expiration-date-a4klq")
-project = rf.workspace().project("expiration-date-mexx5")
-model = project.version(4).model
-
-# Start video capture
-cap = cv2.VideoCapture(0)
+#project = rf.workspace().project("expiration-date-mexx5")
+#model = project.version(4).model
 
 # Set the desired prediction image dimensions 
 prediction_image_width = 640
 prediction_image_height = 640
 
-while True:
-    ret, frame = cap.read()  # Capture a frame
-    if not ret:
-        print("Failed to grab frame")
-        break
+# Data Init
+dark = False
+sortValue = -1
+list = []
+expireRange = 2
+alertActive = False;
+is_active = 0
+
+# Functions
+class Item:
+    def __init__(self, name, date = datetime.date.today()):
+        self.name = name
+        self.date = date
+    def __str__(self):
+        return f'{self.name}'
+    def __eq__(self, other):
+        return self.name == other.name
+# Check Dates
+def dateCheck(date):
+    today = datetime.date.today()
+    if date.year > today.year:
+        return '✅'
+    elif date.year == today.year:    
+        if date.month > today.month:
+            return '✅'
+        elif date.month == today.month:
+            if date.day - today.day < expireRange + 1 and date.day - today.day >= 0:
+                return '⚠'
+            elif date.day > today.day:
+                return '✅'
+    return '⛔'
+# Add to List
+def addToList(tree, item):
+    if alertActive == False:
+        list.append(item)
+        addEntry(tree, item)
         
-    #convert frame to gray
-    frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+def mouse_click(event, x, y, flags, param):
+	global is_active
+	if event == cv2.EVENT_LBUTTONDOWN:
+		is_active = 1
 
-    frame_resized_for_prediction = cv2.resize(frame_gray, (prediction_image_width, prediction_image_height))
+# Begin scanning items
+def startScanning():	
+    global is_active
+    img_counter = 0  # counter for image name
+    cap = cv2.VideoCapture(0)
+    cv2.namedWindow('Camera Feed', cv2.WINDOW_NORMAL)
+    cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    cv2.setMouseCallback('Camera Feed', mouse_click)
+	
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Failed to grab frame")
+            break
+        cv2.imshow('Camera Feed', frame)
+		
+        k = cv2.waitKey(1)
+        if k & 0xFF == ord('q'):  # quit camera feed if 'q' is pressed
+            break
+        if is_active == 1:
+            print("Proceeding to capture....")
+            img_name = "/home/team4pi/Documents/smartpantry/database/item{}.jpg".format(img_counter)
+            cv2.imwrite(img_name, frame)
+            img_counter += 1
+            is_active = 0
 
-    # Predict using Roboflow model 
-    prediction = model.predict(frame_resized_for_prediction, confidence=35, overlap=30).json()
+    cap.release()
+    cv2.destroyAllWindows()
 
-    # Scale factors 
-    scale_x = frame.shape[1] / prediction_image_width
-    scale_y = frame.shape[0] / prediction_image_height
-
-    # Process predictions and draw bounding boxes and text
-    for obj in prediction['predictions']:
+# Add to Tree
+def addEntry(tree, item):
+    global alertActive
+    tree.insert('', 'end', text="1", values=(str(item), dateCheck(item.date), str(item.date)))
+    if dateCheck(item.date) == '⚠' or dateCheck(item.date) == '⛔':
+        newAlert()
+        alertActive = True
+# Alert Window
+def newAlert():
+    global alertActive
+    if alertActive == False:
         
-        x1 = int((obj['x'] - obj['width'] / 2) * scale_x)
-        x2 = int((obj['x'] + obj['width'] / 2) * scale_x)
-        y1 = int((obj['y'] - obj['height'] / 2) * scale_y)
-        y2 = int((obj['y'] + obj['height'] / 2) * scale_y)
+        alertWindow = Toplevel(window)
+        alertWindow.attributes('-topmost', True)
+        alertWindow.overrideredirect(True)
+        alertWindow.geometry('+%d+%d'%(window.winfo_screenmmwidth() / 2, window.winfo_screenmmheight() / 2))
         
-        # Define the region of interest (ROI) based on the bounding box
-        roi = frame[y1:y2, x1:x2]
+        Label(alertWindow, text=('Warning!\nThe following items are close to or are expired!'), font=('Arial', 12), anchor=N, fg='black', bg='white', borderwidth=2).pack() 
+        # Table Setup
+        alertTreeFrame = Frame(alertWindow)
+        alertTreeFrame.pack()
+        style = ttk.Style()
+        style.theme_use('clam')
+        alertTree = ttk.Treeview(alertTreeFrame, column=('Item', 'Expiration Date'), show='headings', height=5)
 
-        # Use Tesseract to do OCR on the binary ROI
-        text = pytesseract.image_to_string(roi, config='--psm 6')
+        # Table Scrollbar
+        alertTreeScroll = ttk.Scrollbar(alertTreeFrame, orient='vertical', command=alertTree.yview)
+        alertTreeScroll.pack(side='right', fill=Y)
+        alertTree.configure(yscrollcommand = alertTreeScroll.set)
 
-        # Draw the bounding box and the OCR'd text above it
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(frame, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+        # Table Entries
+        alertTree.column('# 1', anchor=CENTER)
+        alertTree.heading('# 1', text='Item', command=lambda:sortA(alertTree))
+        alertTree.column('# 2', anchor=CENTER)
+        alertTree.heading('# 2', text='Date', command=lambda:sortE(alertTree))
+        for i in list:
+            if dateCheck(i.date) == '⚠' or dateCheck(i.date) == '⛔':
+                alertTree.insert('', 'end', text="1", values=(str(i), str(i.date)))
+        alertTree.pack()
+        
+        alertButton = Button(alertWindow, text='Close', width=50, command=lambda:die(alertWindow))
+        alertButton.pack()
+        alertActive = True
+# Close
+def die(b):
+    b.destroy()
+    global alertActive
+    alertActive = False
+# Toggle Modes
+def toggle():
+    global dark
+    if dark:
+        window.configure(background='white')
+        boxTitle.configure(fg='black', bg='white')
+        tableLegend.configure(fg='black', bg='white')
+        colorButton.configure(text='Set to Dark Theme')
+        dark = False
+    else:
+        window.configure(background='black')
+        boxTitle.configure(fg='white', bg='black')
+        tableLegend.configure(fg='white', bg='black')
+        colorButton.configure(text='Set to Light Theme')
+        dark = True
+# Sort Alphabetically
+def sortA(tree):
+    global sortValue
+    if sortValue == 1:
+        rows = [(tree.set(item, 'Item').lower(), item) for item in tree.get_children('')]
+        rows.sort(reverse=True)
+        for index, (values, item) in enumerate(rows):
+            tree.move(item, '', index)
+        sortValue = 2
+    elif sortValue == 2:
+        rows = [(tree.set(item, 'Item').lower(), item) for item in tree.get_children('')]
+        rows.sort()
+        for index, (values, item) in enumerate(rows):
+            tree.move(item, '', index)
+        sortValue = 1
+    else:
+        rows = [(tree.set(item, 'Item').lower(), item) for item in tree.get_children('')]
+        rows.sort()
+        for index, (values, item) in enumerate(rows):
+            tree.move(item, '', index)
+        sortValue = 1
+# Sort by Date
+def sortE(tree):
+    global sortValue
+    if sortValue == 3:
+        rows = [(tree.set(item, 'Expiration Date').lower(), item) for item in tree.get_children('')]
+        rows.sort(reverse=True)
+        for index, (values, item) in enumerate(rows):
+            tree.move(item, '', index)
+        sortValue = 4
+    elif sortValue == 4:
+        rows = [(tree.set(item, 'Expiration Date').lower(), item) for item in tree.get_children('')]
+        rows.sort()
+        for index, (values, item) in enumerate(rows):
+            tree.move(item, '', index)
+        sortValue = 3
+    else:
+        rows = [(tree.set(item, 'Expiration Date').lower(), item) for item in tree.get_children('')]
+        rows.sort()
+        for index, (values, item) in enumerate(rows):
+            tree.move(item, '', index)
+        sortValue = 3
+"""
+# Find in Tree
+def find(t, searchItem):
+    for i in t.get_children():
+        if t.item(i)['values'][0].lower().__contains__(str(searchItem).lower()):
+            tid = i
+            t.focus(tid)
+            t.selection_set(tid)
+            t.see(i)
+            break
+"""
+# Window
+window = Tk()
+window.attributes('-fullscreen',True)
+window.attributes('-topmost', False)
+window.title('Smart Pantry')
+icon = PhotoImage(file='./icon.ppm')
+window.iconphoto(False, icon)
+window.configure(background='white', padx=10, pady=10)
 
-    # Display the frame
-    cv2.imshow("Expiration Date Detection", frame)
+# Logo
+canvas = Canvas(window, width=106, height=117)
+canvas.pack(anchor=NW)
+img = PhotoImage(file='./logosmall.ppm')
+canvas.create_image(0,0, anchor=NW, image=img)
 
-    # Exit the loop when the 'q' key is pressed
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+# Table Title
+boxTitle = Label(window, text='Item Inventory', font=('Arial', 24), fg='black', bg='white')
+boxTitle.pack()
 
-# Release the capture when everything is done
-cap.release()
-cv2.destroyAllWindows()
+# Table Setup
+treeFrame = Frame()
+treeFrame.pack()
+style = ttk.Style()
+style.theme_use('clam')
+tree = ttk.Treeview(treeFrame, column=('Item', 'Status', 'Expiration Date'), show='headings', height=10)
+
+# Table Scrollbar
+treeScroll = ttk.Scrollbar(treeFrame, orient='vertical', command=tree.yview)
+treeScroll.pack(side='right', fill=Y)
+tree.configure(yscrollcommand = treeScroll.set)
+
+# Table Entries
+tree.column('# 1', anchor=CENTER)
+tree.heading('# 1', text='Item', command=lambda:sortA(tree))
+tree.column('# 2', anchor=CENTER)
+tree.heading('# 2', text='Status', command=lambda:sortE(tree))
+tree.column('# 3', anchor=CENTER)
+tree.heading('# 3', text='Expiration Date', command=lambda:sortE(tree))
+for i in list:
+    addEntry(tree, i)
+tree.pack()
+
+# Table Legend
+tableLegend = Label(window, text=('✅ = Safe to Distribute   ⚠ = Within ' + str(expireRange) + ' Days until Expiring   ⛔ = Past Expiration Date'), font=('Arial', 12), anchor=W, fg='black', bg='white', borderwidth=2)
+tableLegend.pack(pady=15)
+
+"""
+# Search
+entry = Entry(window, bd=2)
+entry.pack()
+search = Button(window, text=('Search for Item'), command=lambda:find(tree, entry.get()))
+search.pack()
+"""
+
+# Scan Button
+testCereal = Item('Test Cereal')
+button = Button(window, text='Add Test Item (Replace with Scan Function)', width=50, command=lambda:startScanning())
+button.pack(pady=15)
+
+# Theme Button
+colorButton = Button(window, text='Set to Dark Theme', width=16, fg='white', bg='gray30', highlightcolor='gray35',command=toggle)
+colorButton.pack(anchor=SE, side=BOTTOM)
+
+window.mainloop()
