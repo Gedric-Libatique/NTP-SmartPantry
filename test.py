@@ -23,6 +23,7 @@ list = []
 expireRange = 2
 alertActive = False;
 is_active = 0
+is_preview = 0
 
 # Functions
 class Item:
@@ -58,29 +59,43 @@ def mouse_click(event, x, y, flags, param):
 	if event == cv2.EVENT_LBUTTONDOWN:
 		is_active = 1
 
+def mouse_click2(event, x, y, flags, param):
+	global is_preview
+	if event == cv2.EVENT_LBUTTONDOWN:
+		is_preview = 1
+		
 # Begin scanning items
 def startScanning():	
     global is_active
     img_counter = 0  # counter for image name
     cap = cv2.VideoCapture(0)
-    cv2.namedWindow('Camera Feed', cv2.WINDOW_NORMAL)
-    cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-    cv2.setMouseCallback('Camera Feed', mouse_click)
-	
+   
     while True:
         ret, frame = cap.read()
         if not ret:
             print("Failed to grab frame")
             break
+            
+        cv2.namedWindow('Camera Feed', cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        cv2.setMouseCallback('Camera Feed', mouse_click)
         cv2.imshow('Camera Feed', frame)
 		
         k = cv2.waitKey(1)
         if k & 0xFF == ord('q'):  # quit camera feed if 'q' is pressed
             break
         if is_active == 1:
+			
             print("Proceeding to capture....")
+            cv2.destroyWindow('Camera Feed')
             img_name = "/home/team4pi/Documents/smartpantry/database/item{}.jpg".format(img_counter)
             cv2.imwrite(img_name, frame)
+            img = cv2.imread(img_name)
+            cv2.imshow('Saved Image', img)
+            
+            cv2.waitKey(0)
+            
+            cv2.destroyWindow('Saved Image')
             img_counter += 1
             is_active = 0
 
