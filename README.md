@@ -16,18 +16,20 @@ The Smart Pantry Management System is an innovative project that aims to prevent
 - [Usage](#usage)
 
 ## Getting Started
-Listed below is all the equipment used to run this project.
+Below is all the equipment used to run this project.
 1. Raspberry Pi 4 Model B (8GB RAM)
 2. 64GB SD Card (64-bit OS installed)
 3. Pi Camera
 4. Interactive Touch Screen
 5. Computer Peripherals
 6. Camera Arm Mount
+7. Nvidia Jetson Nano (https://www.amazon.com/gp/product/B084DSDDLT/)
 
 ## Prerequisites
 The prerequisites below are needed to run this project.
-- https://qengineering.eu/install-opencv-on-raspberry-64-os.html
-- Install dependencies:
+```
+https://qengineering.eu/install-opencv-on-raspberry-64-os.html
+```
 
 ```
 sudo apt install tesseract-ocr
@@ -42,14 +44,16 @@ Detect text in images or a camera live feed
 Tutorial: https://tutorials-raspberrypi.com/raspberry-pi-text-recognition-ocr/
 
 1. Run Examples
-
 ```
 python3 example.py
+```
+
+```
 python3 live.py
 ```
 
 ## Usage
-Explain how to use your Smart Pantry Management System. Include examples, screenshots, or code snippets if necessary.
+Begin by first running the script, waiting for the GUI to load, then clicking on the Capture button to turn on the camera. It will now show a live feed through the camera and once the item of interest is in position, click anywhere on the screen to capture it and it will show up as a preview on the screen with the date being highlighted and translated. Click one more time to confirm the capture and store the date as a new entry on the table shown in the GUI.
 
 ## Resources
 - https://docs.ultralytics.com/yolov5/tutorials/pytorch_hub_model_loading/
