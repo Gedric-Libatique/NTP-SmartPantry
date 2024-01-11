@@ -45,16 +45,9 @@ sudo apt-get install -y python3-testresources
 ```
 
 ## Installation
-Detect text in images or a camera live feed
-Tutorial: https://tutorials-raspberrypi.com/raspberry-pi-text-recognition-ocr/
-
-1. Run Examples
+Run the main python file below in the terminal.
 ```
-python3 example.py
-```
-
-```
-python3 live.py
+python3 main.py
 ```
 
 ## Usage
@@ -71,3 +64,4 @@ Begin by first running the script, waiting for the GUI to load, then clicking on
 - https://www.tensorflow.org/overview
 - https://www.youtube.com/watch?v=yI18t6suGVw
 - https://qengineering.eu/install-opencv-on-raspberry-64-os.html
+- https://tutorials-raspberrypi.com/raspberry-pi-text-recognition-ocr/
