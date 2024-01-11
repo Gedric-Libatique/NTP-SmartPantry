@@ -2,3 +2,12 @@ opencv-python
 pillow
 pytesseract
 imutils
+roboflow
+torch
+torchvision
+torchaudio
+numpy
+easyocr
+tensorboard
+screeninfo
+dateparser
