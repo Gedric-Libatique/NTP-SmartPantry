@@ -32,6 +32,18 @@ Install the dependencies below to properly run this project.
 pip3 install -r requirements.txt
 ```
 
+```
+sudo apt-get update
+sudo raspi-config
+sudo apt-get install python3-tk
+sudo apt-get install python3-opencv
+sudo apt-get install tesseract-ocr
+sudo apt-get install libtesseract-dev
+sudo apt-get install pytesseract
+sudo apt-get install libqt4-test
+sudo apt-get install -y python3-testresources
+```
+
 ## Installation
 Detect text in images or a camera live feed
 Tutorial: https://tutorials-raspberrypi.com/raspberry-pi-text-recognition-ocr/
