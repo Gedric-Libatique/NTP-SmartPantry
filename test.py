@@ -1,4 +1,3 @@
-# Working version
 import datetime
 import tkinter as tk
 from tkinter import *
@@ -13,6 +12,10 @@ rf = Roboflow(api_key="xkbIrK2MkTDbwkuRw4wW")
 # project = rf.workspace().project("expiration-date-a4klq")
 project = rf.workspace().project("expiration-date-mexx5")
 model = project.version(4).model
+
+# Model config
+accuracy = 35
+over = 30
 
 # Set the desired prediction image dimensions 
 prediction_image_width = 640
@@ -119,7 +122,7 @@ def startScanning():
             frame_resized_for_prediction = cv2.resize(frame_gray, (prediction_image_width, prediction_image_height))
             
             # Predict using Roboflow model 
-            prediction = model.predict(frame_resized_for_prediction, confidence=35, overlap=30).json()
+            prediction = model.predict(frame_resized_for_prediction, confidence=accuracy, overlap=over).json()
             
             # Scale factors 
             scale_x = img.shape[1] / prediction_image_width
@@ -182,7 +185,7 @@ def startLiveFeed():
 		frame_resized_for_prediction = cv2.resize(frame_gray, (prediction_image_width, prediction_image_height))
 
 		# Predict using Roboflow model 
-		prediction = model.predict(frame_resized_for_prediction, confidence=35, overlap=30).json()
+		prediction = model.predict(frame_resized_for_prediction, confidence=accuracy, overlap=over).json()
 
 		# Scale factors 
 		scale_x = frame.shape[1] / prediction_image_width
