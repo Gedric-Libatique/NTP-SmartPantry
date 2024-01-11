@@ -26,14 +26,7 @@ Below is all the equipment used to run this project.
 7. Nvidia Jetson Nano (https://www.amazon.com/gp/product/B084DSDDLT/)
 
 ## Prerequisites
-The prerequisites below are needed to run this project.
-```
-https://qengineering.eu/install-opencv-on-raspberry-64-os.html
-```
-
-```
-sudo apt install tesseract-ocr
-```
+Install the dependencies below to properly run this project.
 
 ```
 pip3 install -r requirements.txt
@@ -65,3 +58,4 @@ Begin by first running the script, waiting for the GUI to load, then clicking on
 - https://tutorials-raspberrypi.com/raspberry-pi-text-recognition-ocr/
 - https://www.tensorflow.org/overview
 - https://www.youtube.com/watch?v=yI18t6suGVw
+- https://qengineering.eu/install-opencv-on-raspberry-64-os.html
