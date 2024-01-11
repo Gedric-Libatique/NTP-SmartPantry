@@ -17,8 +17,8 @@ The Smart Pantry Management System is an innovative project that aims to prevent
 
 ## Getting Started
 Below is all the equipment used to run this project.
-1. Raspberry Pi 4 Model B (8GB RAM)
-2. 64GB SD Card (64-bit OS installed)
+1. Raspberry Pi 4 Model B (8GB RAM) [https://www.amazon.com/Raspberry-Pi-Computer-Suitable-Workstation/dp/B0899VXM8F?th=1]
+2. 64GB SD Card
 3. Pi Camera
 4. Interactive Touch Screen
 5. Computer Peripherals
