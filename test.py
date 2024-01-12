@@ -85,16 +85,9 @@ def addToList(tree, item, text):
 # Begin scanning items
 def startScanning():	
     global is_active, clicked, img_counter
+    prediction_image_width = 640
+    prediction_image_height = 640
     cap = cv2.VideoCapture(0)
-    
-    cv2.namedWindow('Camera Feed', cv2.WINDOW_NORMAL)
-    cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-    cv2.setMouseCallback('Camera Feed', mouse_click)
-    
-    # Set preview properties to full screen
-    cv2.namedWindow('Saved Image', cv2.WINDOW_NORMAL)
-    cv2.setWindowProperty('Saved Image', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-    cv2.setMouseCallback('Saved Image', mouse_click2)
    
     while True:
         ret, frame = cap.read()
@@ -102,33 +95,38 @@ def startScanning():
             print("Failed to grab frame")
             break
             
+        cv2.namedWindow('Camera Feed', cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+        cv2.setMouseCallback('Camera Feed', mouse_click)
         cv2.imshow('Camera Feed', frame)
 		
         k = cv2.waitKey(1)
         if k & 0xFF == ord('q'):  # quit camera feed if 'q' is pressed
             break
-
         if is_active == 1:
             cv2.destroyWindow('Camera Feed')
             print("Proceeding to capture....")
             
             # Set preview properties to full screen
-            cv2.imshow('Saved Image', frame)
+            cv2.namedWindow('Saved Image', cv2.WINDOW_NORMAL)
+            cv2.setWindowProperty('Saved Image', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            cv2.setMouseCallback('Saved Image', mouse_click2)
             
             # Save captured frame to database
-            img_name = "{}item{}.jpg".format(img_path, img_counter)
+            img_name = "/home/team4pi/Documents/smartpantry/database/item{}.jpg".format(img_counter)
             cv2.imwrite(img_name, frame)
+            img = cv2.imread(img_name)
             
             # Convert frame to grayscale
-            frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             frame_resized_for_prediction = cv2.resize(frame_gray, (prediction_image_width, prediction_image_height))
             
             # Predict using Roboflow model 
             prediction = model.predict(frame_resized_for_prediction, confidence=accuracy, overlap=over).json()
             
             # Scale factors 
-            scale_x = frame.shape[1] / prediction_image_width
-            scale_y = frame.shape[0] / prediction_image_height
+            scale_x = img.shape[1] / prediction_image_width
+            scale_y = img.shape[0] / prediction_image_height
 			
 			# Process predictions and draw bounding boxes and text
             for obj in prediction['predictions']:
@@ -138,7 +136,7 @@ def startScanning():
                 y2 = int((obj['y'] + obj['height'] / 2) * scale_y)
 				
 				# Define the region of interest (ROI) based on the bounding box
-                roi = frame[y1:y2, x1:x2]
+                roi = img[y1:y2, x1:x2]
 
 				# Use Tesseract to do OCR on the binary ROI
                 text = pytesseract.image_to_string(roi, config='--psm 6')
@@ -149,11 +147,11 @@ def startScanning():
                 addToList(tree, scannedItem, text)
 
 				# Draw the bounding box and the OCR'd text above it
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(img, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
 			# Display the frame
-            cv2.imshow('Saved Image', frame)
+            cv2.imshow('Saved Image', img)
               
             while True:
                 k = cv2.waitKey(1)
