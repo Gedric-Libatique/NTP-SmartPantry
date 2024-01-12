@@ -157,8 +157,8 @@ def startScanning():
                 cv2.putText(img, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
 			# Find the contour with the largest area
-            largest_contour = max(contours, key=cv2.contourArea)
-            #largest_contour = max(contours, key=lambda contour: cv2.contourArea(contour))
+            #largest_contour = max(contours, key=cv2.contourArea)
+            largest_contour = max(contours, key=lambda contour: cv2.contourArea(contour))
             
             # Process detected contours
             for contour in contours:
@@ -176,9 +176,13 @@ def startScanning():
                     shape = "Circle"
 
                 # Calculate the size (area) of the object
-                size = math.ceil(cv2.contourArea(contour))
-
-                if contour == max_contour:
+                #size = math.ceil(cv2.contourArea(contour))
+				
+				#if size != 0:
+                if cv2.contourArea(contour) == cv2.contourArea(largest_contour):
+					# Calculate the size (area) of the object 
+                    size = math.ceil(cv2.contourArea(contour))
+					
                     # Draw the detected object on the frame
                     cv2.drawContours(img, [contour], -1, (0, 255, 0), 2)
                     cv2.putText(img, f"{shape} ({size:.2f})", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
