@@ -121,6 +121,11 @@ def startScanning():
             frame_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             frame_resized_for_prediction = cv2.resize(frame_gray, (prediction_image_width, prediction_image_height))
             
+            # Apply thresholding to create a binary image
+            _, thresholded = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
+            # Find contours in the binary image
+            contours, _ = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
             # Predict using Roboflow model 
             prediction = model.predict(frame_resized_for_prediction, confidence=accuracy, overlap=over).json()
             
@@ -150,7 +155,29 @@ def startScanning():
                 cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(img, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
-			# Display the frame
+			# Process detected contours
+            for contour in contours:
+                # Approximate the contour to simplify shape detection
+                x, y, w, h = cv2.boundingRect(contour)
+                epsilon = 0.04 * cv2.arcLength(contour, True)
+                approx = cv2.approxPolyDP(contour, epsilon, True)
+
+                # Identify the shape based on the number of vertices
+                if len(approx) == 3:
+                    shape = "Triangle"
+                elif len(approx) == 4:
+                    shape = "Rectangle"
+                else:
+                    shape = "Circle"
+
+                # Calculate the size (area) of the object
+                size = cv2.contourArea(contour)
+
+                # Draw the detected object on the frame
+                cv2.drawContours(img, [contour], -1, (0, 255, 0), 2)
+                cv2.putText(img, f"{shape} ({size:.2f})", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            
+            # Display the frame
             cv2.imshow('Saved Image', img)
               
             while True:
