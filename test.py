@@ -4,6 +4,7 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import Tk, Button, font
 import cv2
+import math
 import pytesseract
 from roboflow import Roboflow
 
@@ -122,7 +123,7 @@ def startScanning():
             frame_resized_for_prediction = cv2.resize(frame_gray, (prediction_image_width, prediction_image_height))
             
             # Apply thresholding to create a binary image
-            _, thresholded = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
+            _, thresholded = cv2.threshold(frame_gray, 128, 255, cv2.THRESH_BINARY)
             # Find contours in the binary image
             contours, _ = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
@@ -171,11 +172,12 @@ def startScanning():
                     shape = "Circle"
 
                 # Calculate the size (area) of the object
-                size = cv2.contourArea(contour)
+                size = math.ceil(cv2.contourArea(contour))
 
-                # Draw the detected object on the frame
-                cv2.drawContours(img, [contour], -1, (0, 255, 0), 2)
-                cv2.putText(img, f"{shape} ({size:.2f})", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                if size != 0:
+                    # Draw the detected object on the frame
+                    cv2.drawContours(img, [contour], -1, (0, 255, 0), 2)
+                    cv2.putText(img, f"{shape} ({size:.2f})", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
             
             # Display the frame
             cv2.imshow('Saved Image', img)
