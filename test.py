@@ -451,7 +451,8 @@ img = PhotoImage(file='./logosmall.ppm')
 canvas.create_image(0,0, anchor=NW, image=img)
 
 # Table Title
-boxTitle = Label(window, text='Item Inventory', font=('Arial', 24), fg='black', bg='white')
+current_date = datetime.date.today().strftime('%m/%d/%y')
+boxTitle = Label(window, text=f"Item Inventory ({current_date})", font=('Arial', 32), fg='black', bg='white')
 boxTitle.pack()
 
 # Table Setup
@@ -490,7 +491,6 @@ search.pack()
 """
 
 # Scan Button
-#testCereal = Item('Test Cereal')
 custom_font = font.Font(family="Helvetica", size=25)
 button = Button(window, text='Add Pantry Item', font=custom_font, width=50, height=2, bg="#00ff00", command=lambda:startScanning())
 button.pack(pady=15)
@@ -504,4 +504,4 @@ button.pack(pady=15)
 colorButton = Button(window, text='Set to Dark Theme', width=16, fg='white', bg='gray30', highlightcolor='gray35',command=toggle)
 colorButton.pack(anchor=SE, side=BOTTOM)
 
-window.mainloop() # Testing done
+window.mainloop()
