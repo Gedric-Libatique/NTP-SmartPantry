@@ -216,18 +216,17 @@ def startLiveFeed():
         if not ret:
             print("Failed to grab frame")
             break
-            
+        
+        # Set preview properties to fullscreen
         cv2.namedWindow('Camera Feed', cv2.WINDOW_NORMAL)
         cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         
+        # Convert to grayscale, apply threshold, and find contours
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        # Apply thresholding to create a binary image
         _, thresholded = cv2.threshold(frame_gray, 128, 255, cv2.THRESH_BINARY)
-        # Find contours in the binary image
         contours, _ = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        # Find the contour with the largest area
-        #largest_contour = max(contours, key=cv2.contourArea)
+        # Get contour with largest area
         largest_contour = max(contours, key=lambda contour: cv2.contourArea(contour))
         
         # Process detected contours
@@ -237,7 +236,7 @@ def startLiveFeed():
             epsilon = 0.04 * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
 
-            # Identify the shape based on the number of vertices
+            # Identify the shape based on number of vertices
             if len(approx) == 3:
                 shape = "Triangle"
             elif len(approx) == 4:
@@ -256,25 +255,24 @@ def startLiveFeed():
                 # Draw the detected object on the frame
                 cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
                 cv2.putText(frame, f"{shape} ({size:.2f})", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-        
-        
+
+        # Wait for next mouse click to save img and run predictions
         cv2.setMouseCallback('Camera Feed', mouse_click)
         cv2.imshow('Camera Feed', frame)
 		
         k = cv2.waitKey(1)
-        if k & 0xFF == ord('q'):  # quit camera feed if 'q' is pressed
+        if k & 0xFF == ord('q'):
             break
         if is_active == 1:
             cv2.destroyWindow('Camera Feed')
             print("Proceeding to capture....")
             
-            # Set preview properties to full screen
+            # Set preview properties to fullscreen
             cv2.namedWindow('Saved Image', cv2.WINDOW_NORMAL)
             cv2.setWindowProperty('Saved Image', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.setMouseCallback('Saved Image', mouse_click2)
             
-            # Save captured frame to database
-            #img_name = "/home/team4pi/Documents/smartpantry/database/item{}.jpg".format(img_counter)
+            # Save captured frame to folder
             img_name = "{}item{}.jpg".format(img_path, img_counter)
             cv2.imwrite(img_name, frame)
             img = cv2.imread(img_name)
@@ -285,7 +283,7 @@ def startLiveFeed():
             # Predict using Roboflow model 
             prediction = model.predict(frame_resized_for_prediction, confidence=accuracy, overlap=over).json()
             
-            # Scale factors 
+            # Scaling factors 
             scale_x = img.shape[1] / prediction_image_width
             scale_y = img.shape[0] / prediction_image_height
 			
@@ -311,8 +309,6 @@ def startLiveFeed():
                 cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
                 cv2.putText(img, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
-			
-            
             # Display the frame
             cv2.imshow('Saved Image', img)
               
