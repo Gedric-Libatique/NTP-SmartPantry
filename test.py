@@ -7,6 +7,12 @@ import cv2
 import math
 import pytesseract
 from roboflow import Roboflow
+import os
+from paddleocr import PaddleOCR, draw_ocr
+from PIL import Image
+
+# Initialize the OCR model
+ocr = PaddleOCR(use_angle_cls=True, lang="en")
 
 # Initialize the Roboflow model
 rf = Roboflow(api_key="xkbIrK2MkTDbwkuRw4wW")
@@ -143,10 +149,13 @@ def startScanning():
 				
 				# Define the region of interest (ROI) based on the bounding box
                 roi = img[y1:y2, x1:x2]
-
-				# Use Tesseract to do OCR on the binary ROI
-                text = pytesseract.image_to_string(roi, config='--psm 6')
                 
+                result = ocr.ocr(roi, cls=True)
+                for idx in range(len(result)):
+                    res = result[idx]
+                    for line in res:
+                        text += line[1][0]
+               
                 # Extract date and store in list
                 print(text)
                 scannedItem = Item("Pantry Item {}".format(img_counter))
