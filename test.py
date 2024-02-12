@@ -173,9 +173,11 @@ def startScanning():
                 
                 # Use Tesseract to do OCR on the binary ROI
                 text = pytesseract.image_to_string(roi, config='--psm 6')
-                
-                # Use examples:
-                test_file = ocr_space_file(filename='/home/team4pi/Documents/smartpantry/database/item0.jpg"', language='eng')
+
+		# Save the ROI to a file
+                cropped_img_name = "/home/team4pi/Documents/smartpantry/database/item{}_cropped.jpg".format(img_counter)
+                cv2.imwrite(cropped_img_name, roi)
+                test_file = ocr_space_file(filename=cropped_img_name, language='eng')
                 # Parse the JSON response
                 parsed_json = json.loads(test_file)
                 # Extract the read text value
