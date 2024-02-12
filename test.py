@@ -7,12 +7,6 @@ import cv2
 import math
 import pytesseract
 from roboflow import Roboflow
-import os
-from paddleocr import PaddleOCR, draw_ocr
-from PIL import Image
-
-# Initialize the OCR model
-ocr = PaddleOCR(use_angle_cls=True, lang="en")
 
 # Initialize the Roboflow model
 rf = Roboflow(api_key="xkbIrK2MkTDbwkuRw4wW")
@@ -88,6 +82,33 @@ def addToList(tree, item, text):
     if alertActive == False:
         list.append(item)
         addEntry(tree, item, text)
+        
+import requests
+import json
+
+def ocr_space_file(filename, overlay=False, api_key='K82211859588957', language='eng'):
+    """ OCR.space API request with local file.
+        Python3.5 - not tested on 2.7
+    :param filename: Your file path & name.
+    :param overlay: Is OCR.space overlay required in your response.
+                    Defaults to False.
+    :param api_key: OCR.space API key.
+                    Defaults to 'helloworld'.
+    :param language: Language code to be used in OCR.
+                    List of available language codes can be found on https://ocr.space/OCRAPI
+                    Defaults to 'en'.
+    :return: Result in JSON format.
+    """
+    payload = {'isOverlayRequired': overlay,
+               'apikey': api_key,
+               'language': language,
+               }
+    with open(filename, 'rb') as f:
+        r = requests.post('https://api.ocr.space/parse/image',
+                          files={filename: f},
+                          data=payload,
+                          )
+    return r.content.decode()
 
 # Begin scanning items
 def startScanning():	
@@ -150,11 +171,16 @@ def startScanning():
 				# Define the region of interest (ROI) based on the bounding box
                 roi = img[y1:y2, x1:x2]
                 
-                result = ocr.ocr(roi, cls=True)
-                for idx in range(len(result)):
-                    res = result[idx]
-                    for line in res:
-                        text += line[1][0]
+                # Use Tesseract to do OCR on the binary ROI
+                text = pytesseract.image_to_string(roi, config='--psm 6')
+                
+                # Use examples:
+                test_file = ocr_space_file(filename='/home/team4pi/Documents/smartpantry/database/item0.jpg"', language='eng')
+                # Parse the JSON response
+                parsed_json = json.loads(test_file)
+                # Extract the read text value
+                read_text = parsed_json['ParsedResults'][0]['ParsedText']
+                print(read_text)  # print the read text
                
                 # Extract date and store in list
                 print(text)
