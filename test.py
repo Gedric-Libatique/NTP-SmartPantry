@@ -31,6 +31,7 @@ alertActive = False;
 is_active = 0
 clicked = 0
 img_counter = 0
+currDate = ""
 
 # Functions
 class Item:
@@ -86,33 +87,55 @@ def addToList(tree, item, text):
 import requests
 import json
 
-def ocr_space_file(filename, overlay=False, api_key='K82211859588957', language='eng'):
-    """ OCR.space API request with local file.
-        Python3.5 - not tested on 2.7
-    :param filename: Your file path & name.
-    :param overlay: Is OCR.space overlay required in your response.
-                    Defaults to False.
-    :param api_key: OCR.space API key.
-                    Defaults to 'helloworld'.
-    :param language: Language code to be used in OCR.
-                    List of available language codes can be found on https://ocr.space/OCRAPI
-                    Defaults to 'en'.
-    :return: Result in JSON format.
-    """
-    payload = {'isOverlayRequired': overlay,
-               'apikey': api_key,
-               'language': language,
-               }
-    with open(filename, 'rb') as f:
-        r = requests.post('https://api.ocr.space/parse/image',
-                          files={filename: f},
-                          data=payload,
-                          )
-    return r.content.decode()
+def sample_ocr_image_file(myPath):
+    global currDate
+    import os
+    from azure.ai.vision.imageanalysis import ImageAnalysisClient
+    from azure.ai.vision.imageanalysis.models import VisualFeatures
+    from azure.core.credentials import AzureKeyCredential
+
+    # Set the values of your computer vision endpoint and computer vision key
+    # as environment variables:
+    try:
+        endpoint = os.environ["VISION_ENDPOINT"]
+        key = os.environ["VISION_KEY"]
+    except KeyError:
+        print("Missing environment variable 'VISION_ENDPOINT' or 'VISION_KEY'")
+        print("Set them before running this sample.")
+        exit()
+
+    # Create an Image Analysis client
+    client = ImageAnalysisClient(
+        endpoint=endpoint,
+        credential=AzureKeyCredential(key)
+    )
+
+    # Load image to analyze into a 'bytes' object
+    with open(myPath, "rb") as f:
+        image_data = f.read()
+
+    # Extract text (OCR) from an image stream. This will be a synchronously (blocking) call.
+    result = client.analyze(
+        image_data=image_data,
+        visual_features=[VisualFeatures.READ]
+    )
+
+    # Print text (OCR) analysis results to the console
+    print("Image analysis results:")
+    print(" Read:")
+    if result.read is not None:
+        for line in result.read.blocks[0].lines:
+            print(f"   Line: '{line.text}', Bounding box {line.bounding_polygon}")
+            for word in line.words:
+                print(f"     Word: '{word.text}', Bounding polygon {word.bounding_polygon}, Confidence {word.confidence:.4f}")
+    print(f" Image height: {result.metadata.height}")
+    print(f" Image width: {result.metadata.width}")
+    print(f" Model version: {result.model_version}")
+    currDate = line.text
 
 # Begin scanning items
 def startScanning():	
-    global is_active, clicked, img_counter
+    global is_active, clicked, img_counter, currDate
     prediction_image_width = 640
     prediction_image_height = 640
     cap = cv2.VideoCapture(0)
@@ -172,19 +195,18 @@ def startScanning():
                 roi = img[y1:y2, x1:x2]
                 
                 # Use Tesseract to do OCR on the binary ROI
-                text = pytesseract.image_to_string(roi, config='--psm 6')
+                #text = pytesseract.image_to_string(roi, config='--psm 6')
+                
+                # Resize the ROI back to the original resolution
+                roi_resized = cv2.resize(roi, (5*(x2 - x1), 5*(y2 - y1)))
 
-		# Save the ROI to a file
+				# Save the ROI to a file
                 cropped_img_name = "/home/team4pi/Documents/smartpantry/database/item{}_cropped.jpg".format(img_counter)
-                cv2.imwrite(cropped_img_name, roi)
-                test_file = ocr_space_file(filename=cropped_img_name, language='eng')
-                # Parse the JSON response
-                parsed_json = json.loads(test_file)
-                # Extract the read text value
-                read_text = parsed_json['ParsedResults'][0]['ParsedText']
-                print(read_text)  # print the read text
+                cv2.imwrite(cropped_img_name, roi_resized)
+                sample_ocr_image_file(cropped_img_name)
                
                 # Extract date and store in list
+                text = currDate
                 print(text)
                 scannedItem = Item("Pantry Item {}".format(img_counter))
                 addToList(tree, scannedItem, text)
