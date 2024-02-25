@@ -1,36 +1,47 @@
-import datetime
+import os, cv2, json, math, requests, datetime, pytesseract
 import tkinter as tk
 from tkinter import *
 from tkinter import ttk
 from tkinter import Tk, Button, font
-import cv2
-import math
-import pytesseract
 from roboflow import Roboflow
+from pyzbar.pyzbar import decode
+from azure.ai.vision.imageanalysis import ImageAnalysisClient
+from azure.ai.vision.imageanalysis.models import VisualFeatures
+from azure.core.credentials import AzureKeyCredential
 
-# Initialize the Roboflow model
-rf = Roboflow(api_key="xkbIrK2MkTDbwkuRw4wW")
-# project = rf.workspace().project("expiration-date-a4klq") # Smaller model (200+ images)
-# model = project.version(3).model
-project = rf.workspace().project("expiration-date-mexx5") # Larger model (2000+ images)
+# Initialize Azure OCR API
+os.environ["VISION_KEY"] = "4eeff2b7a10542bba2755eac69a2b046"
+os.environ["VISION_ENDPOINT"] = "https://seniordesignocr.cognitiveservices.azure.com/"
+
+# Initialize Roboflow API 
+rf = Roboflow(api_key="LkV23QCGFQJqWru2RYvL")
+
+# Initialize large model (2000+ images)
+project = rf.workspace().project("expiration-date-mexx5")
 model = project.version(4).model
-accuracy = 35
-over = 30
+
+# Initialize small model (200+ images)
+# project = rf.workspace().project("expiration-date-a4klq")
+# model = project.version(3).model
 
 # Set the desired prediction image dimensions 
 prediction_image_width = 640
 prediction_image_height = 640
-img_path = "/home/team4pi/Documents/smartpantry/database/"
 
-# Data Init
+# Initialize global variables
+accuracy = 35
+over = 30
 dark = False
 sortValue = -1
 list = []
-expireRange = 2
-alertActive = False;
+expire_range = 2
+alert_active = False;
 is_active = 0
 clicked = 0
 img_counter = 0
+current_date = ""
+current_name = ""
+ocr_scale = 5
 
 # Functions
 class Item:
@@ -41,6 +52,7 @@ class Item:
         return f'{self.name}'
     def __eq__(self, other):
         return self.name == other.name
+
 # Check Dates
 def dateCheck(date):
     today = datetime.date.today()
@@ -50,7 +62,7 @@ def dateCheck(date):
         if date.month > today.month:
             return '✅'
         elif date.month == today.month:
-            if date.day - today.day < expireRange + 1 and date.day - today.day >= 0:
+            if date.day - today.day < expire_range + 1 and date.day - today.day >= 0:
                 return '⚠'
             elif date.day > today.day:
                 return '✅'
@@ -69,25 +81,112 @@ def mouse_click2(event, x, y, flags, param):
 
 # Add to Tree
 def addEntry(tree, item, text):
-    global alertActive
+    global alert_active
     tree.insert('', 'end', text="1", values=(str(item), dateCheck(item.date), str(text)))
     '''
     if dateCheck(item.date) == '⚠' or dateCheck(item.date) == '×':
         newAlert()
-        alertActive = True
+        alert_active = True
     '''
 
 # Add to List
 def addToList(tree, item, text):
-    if alertActive == False:
+    if alert_active == False:
         list.append(item)
         addEntry(tree, item, text)
+        
+# Read barcode for item identification
+def getProductName(barcode):
+    # Initialize barcode reader API
+    api_key = '95vlr1c0rjim6gkqvyujz7v6kkdh8i'
+
+    url = f"https://api.barcodelookup.com/v3/products?barcode={barcode}&formatted=y&key=95vlr1c0rjim6gkqvyujz7v6kkdh8i"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        data = response.json()
+        # Assuming the JSON response structure includes a 'products' list
+        if data['products']:
+            product_name = data['products'][0]['title']
+            return product_name
+        else:
+            return "Product not found."
+    else:
+        return f"Error: {response.status_code}"
+
+# Scan for barcode on product
+def scanBarcode():
+    global current_name
+    cap = cv2.VideoCapture(0)
+    camera = True
+
+    while camera:
+        success, frame = cap.read()
+        cv2.namedWindow('Testing-code-scan', cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty('Testing-code-scan', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+        for code in decode(frame):
+            barcode_data = code.data.decode('utf-8')
+            print("Scanned barcode:", barcode_data)
+            product_name = getProductName(barcode_data)
+            current_name = product_name
+            print("Product name:", product_name)
+            # You may want to break after the first successful read and product name retrieval
+            camera = False  # This will exit the while loop after one successful scan
+            break  # Break the for loop after finding a barcode
+
+        cv2.imshow('Testing-code-scan', frame)
+        if cv2.waitKey(1) == ord('q'):  # Press 'q' to quit the camera scan
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+# Read scanned date using Azure AI
+def readDateText(myPath):
+    global current_date
+
+    try:
+        endpoint = os.environ["VISION_ENDPOINT"]
+        key = os.environ["VISION_KEY"]
+    except KeyError:
+        print("Missing environment variable 'VISION_ENDPOINT' or 'VISION_KEY'")
+        print("Set them before running this sample.")
+        exit()
+
+    # Create an Image Analysis client
+    client = ImageAnalysisClient(
+        endpoint=endpoint,
+        credential=AzureKeyCredential(key)
+    )
+
+    # Load image to analyze into a 'bytes' object
+    with open(myPath, "rb") as f:
+        image_data = f.read()
+
+    # Extract text (OCR) from an image stream. This will be a synchronously (blocking) call.
+    result = client.analyze(
+        image_data=image_data,
+        visual_features=[VisualFeatures.READ]
+    )
+
+    # Print text (OCR) analysis results to the console
+    print("Image analysis results:")
+    print(" Read:")
+    if result.read is not None:
+        for line in result.read.blocks[0].lines:
+            print(f"   Line: '{line.text}', Bounding box {line.bounding_polygon}")
+            for word in line.words:
+                print(f"     Word: '{word.text}', Bounding polygon {word.bounding_polygon}, Confidence {word.confidence:.4f}")
+    print(f" Image height: {result.metadata.height}")
+    print(f" Image width: {result.metadata.width}")
+    print(f" Model version: {result.model_version}")
+    current_date = line.text
 
 # Begin scanning items
-def startScanning():	
-    global is_active, clicked, img_counter
-    prediction_image_width = 640
-    prediction_image_height = 640
+def startScanning():
+    scanBarcode() # Scan barcode first
+    global is_active, clicked, img_counter, current_date, current_name, prediction_image_width, prediction_image_height, ocr_scale
     cap = cv2.VideoCapture(0)
    
     while True:
@@ -143,13 +242,19 @@ def startScanning():
 				
 				# Define the region of interest (ROI) based on the bounding box
                 roi = img[y1:y2, x1:x2]
-
-				# Use Tesseract to do OCR on the binary ROI
-                text = pytesseract.image_to_string(roi, config='--psm 6')
                 
+                # Resize the ROI back to the original resolution
+                roi_resized = cv2.resize(roi, (ocr_scale*(x2 - x1), ocr_scale*(y2 - y1)))
+
+				# Save the ROI to a file
+                cropped_img = "/home/team4pi/Documents/smartpantry/database/item{}_cropped.jpg".format(img_counter)
+                cv2.imwrite(cropped_img, roi_resized)
+                readDateText(cropped_img)
+               
                 # Extract date and store in list
+                text = current_date
                 print(text)
-                scannedItem = Item("Pantry Item {}".format(img_counter))
+                scannedItem = Item(current_name)
                 addToList(tree, scannedItem, text)
 
 				# Draw the bounding box and the OCR'd text above it
@@ -157,7 +262,6 @@ def startScanning():
                 cv2.putText(img, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
 			# Find the contour with the largest area
-            #largest_contour = max(contours, key=cv2.contourArea)
             largest_contour = max(contours, key=lambda contour: cv2.contourArea(contour))
             
             # Process detected contours
@@ -175,10 +279,6 @@ def startScanning():
                 else:
                     shape = "Circle"
 
-                # Calculate the size (area) of the object
-                #size = math.ceil(cv2.contourArea(contour))
-				
-				#if size != 0:
                 if cv2.contourArea(contour) == cv2.contourArea(largest_contour):
 					# Calculate the size (area) of the object 
                     size = math.ceil(cv2.contourArea(contour))
@@ -204,132 +304,10 @@ def startScanning():
     cap.release()
     cv2.destroyAllWindows()
 
-# Begin using live feed
-def startLiveFeed():	
-    global is_active, clicked, img_counter
-    prediction_image_width = 640
-    prediction_image_height = 640
-    cap = cv2.VideoCapture(0)
-   
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Failed to grab frame")
-            break
-        
-        # Set preview properties to fullscreen
-        cv2.namedWindow('Camera Feed', cv2.WINDOW_NORMAL)
-        cv2.setWindowProperty('Camera Feed', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        
-        # Convert to grayscale, apply threshold, and find contours
-        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        _, thresholded = cv2.threshold(frame_gray, 128, 255, cv2.THRESH_BINARY)
-        contours, _ = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        # Get contour with largest area
-        largest_contour = max(contours, key=lambda contour: cv2.contourArea(contour))
-        
-        # Process detected contours
-        for contour in contours:
-            # Approximate the contour to simplify shape detection
-            x, y, w, h = cv2.boundingRect(contour)
-            epsilon = 0.04 * cv2.arcLength(contour, True)
-            approx = cv2.approxPolyDP(contour, epsilon, True)
-
-            # Identify the shape based on number of vertices
-            if len(approx) == 3:
-                shape = "Triangle"
-            elif len(approx) == 4:
-                shape = "Rectangle"
-            else:
-                shape = "Circle"
-
-            # Calculate the size (area) of the object
-            #size = math.ceil(cv2.contourArea(contour))
-            
-            #if size != 0:
-            if cv2.contourArea(contour) == cv2.contourArea(largest_contour):
-                # Calculate the size (area) of the object 
-                size = math.ceil(cv2.contourArea(contour))
-                
-                # Draw the detected object on the frame
-                cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
-                cv2.putText(frame, f"{shape} ({size:.2f})", (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-
-        # Wait for next mouse click to save img and run predictions
-        cv2.setMouseCallback('Camera Feed', mouse_click)
-        cv2.imshow('Camera Feed', frame)
-		
-        k = cv2.waitKey(1)
-        if k & 0xFF == ord('q'):
-            break
-        if is_active == 1:
-            cv2.destroyWindow('Camera Feed')
-            print("Proceeding to capture....")
-            
-            # Set preview properties to fullscreen
-            cv2.namedWindow('Saved Image', cv2.WINDOW_NORMAL)
-            cv2.setWindowProperty('Saved Image', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-            cv2.setMouseCallback('Saved Image', mouse_click2)
-            
-            # Save captured frame to folder
-            img_name = "{}item{}.jpg".format(img_path, img_counter)
-            cv2.imwrite(img_name, frame)
-            img = cv2.imread(img_name)
-            
-            # Convert frame to grayscale
-            frame_resized_for_prediction = cv2.resize(frame_gray, (prediction_image_width, prediction_image_height))
-            
-            # Predict using Roboflow model 
-            prediction = model.predict(frame_resized_for_prediction, confidence=accuracy, overlap=over).json()
-            
-            # Scaling factors 
-            scale_x = img.shape[1] / prediction_image_width
-            scale_y = img.shape[0] / prediction_image_height
-			
-			# Process predictions and draw bounding boxes and text
-            for obj in prediction['predictions']:
-                x1 = int((obj['x'] - obj['width'] / 2) * scale_x)
-                x2 = int((obj['x'] + obj['width'] / 2) * scale_x)
-                y1 = int((obj['y'] - obj['height'] / 2) * scale_y)
-                y2 = int((obj['y'] + obj['height'] / 2) * scale_y)
-				
-				# Define the region of interest (ROI) based on the bounding box
-                roi = img[y1:y2, x1:x2]
-
-				# Use Tesseract to do OCR on the binary ROI
-                text = pytesseract.image_to_string(roi, config='--psm 6')
-                
-                # Extract date and store in list
-                print(text)
-                scannedItem = Item("Pantry Item {}".format(img_counter))
-                addToList(tree, scannedItem, text)
-
-				# Draw the bounding box and the OCR'd text above it
-                cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(img, text, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-            # Display the frame
-            cv2.imshow('Saved Image', img)
-              
-            while True:
-                k = cv2.waitKey(1)
-                if clicked == 1:
-                    clicked = 0
-                    break
-  
-            cv2.destroyWindow('Saved Image')
-            img_counter += 1
-            is_active = 0
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
-
 # Alert Window
 def newAlert():
-    global alertActive
-    if alertActive == False:
+    global alert_active
+    if alert_active == False:
         
         alertWindow = Toplevel(window)
         alertWindow.attributes('-topmost', True)
@@ -361,12 +339,13 @@ def newAlert():
         
         alertButton = Button(alertWindow, text='Close', width=50, command=lambda:die(alertWindow))
         alertButton.pack()
-        alertActive = True
+        alert_active = True
+
 # Close
 def die(b):
     b.destroy()
-    global alertActive
-    alertActive = False
+    global alert_active
+    alert_active = False
 # Toggle Modes
 def toggle():
     global dark
@@ -451,8 +430,8 @@ img = PhotoImage(file='./logosmall.ppm')
 canvas.create_image(0,0, anchor=NW, image=img)
 
 # Table Title
-current_date = datetime.date.today().strftime('%m/%d/%y')
-boxTitle = Label(window, text=f"Item Inventory ({current_date})", font=('Arial', 32), fg='black', bg='white')
+current_time = datetime.date.today().strftime('%m/%d/%y')
+boxTitle = Label(window, text=f"Item Inventory ({current_time})", font=('Arial', 32), fg='black', bg='white')
 boxTitle.pack()
 
 # Table Setup
@@ -460,12 +439,19 @@ treeFrame = Frame()
 treeFrame.pack()
 style = ttk.Style()
 style.theme_use('clam')
+table_entries_font = font.Font(family="Helvetica", size=13)
+style.configure('Treeview', font=table_entries_font)
 tree = ttk.Treeview(treeFrame, column=('Item', 'Status', 'Expiration Date'), show='headings', height=10)
 
 # Table Scrollbar
 treeScroll = ttk.Scrollbar(treeFrame, orient='vertical', command=tree.yview)
 treeScroll.pack(side='right', fill=Y)
 tree.configure(yscrollcommand = treeScroll.set)
+
+# Set column widths
+tree.column('Item', width=400, minwidth=400, anchor=CENTER)
+tree.column('Status', width=80, minwidth=80, anchor=CENTER)
+tree.column('Expiration Date', width=150, minwidth=150, anchor=CENTER)
 
 # Table Entries
 tree.column('# 1', anchor=CENTER)
@@ -479,7 +465,7 @@ for i in list:
 tree.pack()
 
 # Table Legend
-tableLegend = Label(window, text=('✅ = Safe to Distribute   ⚠ = Within ' + str(expireRange) + ' Days until Expiring   × = Past Expiration Date'), font=('Arial', 12), anchor=W, fg='black', bg='white', borderwidth=2)
+tableLegend = Label(window, text=('✅ = Safe to Distribute   ⚠ = Within ' + str(expire_range) + ' Days until Expiring   × = Past Expiration Date'), font=('Arial', 12), anchor=W, fg='black', bg='white', borderwidth=2)
 tableLegend.pack(pady=15)
 
 """
@@ -491,14 +477,9 @@ search.pack()
 """
 
 # Scan Button
-custom_font = font.Font(family="Helvetica", size=25)
-button = Button(window, text='Add Pantry Item', font=custom_font, width=50, height=2, bg="#00ff00", command=lambda:startScanning())
-button.pack(pady=15)
-
-# Live Scan Button
-custom_font = font.Font(family="Helvetica", size=25)
-button = Button(window, text='Live Feed', font=custom_font, width=50, height=2, bg="#ffff00", command=lambda:startLiveFeed())
-button.pack(pady=15)
+scan_button_font = font.Font(family="Helvetica", size=35)
+button = Button(window, text='Add Pantry Item', font=scan_button_font, width=40, height=2, bg="#00ff00", command=lambda:startScanning())
+button.pack(pady=50)
 
 # Theme Button
 colorButton = Button(window, text='Set to Dark Theme', width=16, fg='white', bg='gray30', highlightcolor='gray35',command=toggle)
